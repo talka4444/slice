@@ -1,5 +1,5 @@
-import { StepStatus } from "../workflow/workflowEngine";
-import { Step } from "./step.interface";
+import { StepStatus } from "../engine/workflowEngine";
+import { Step } from "../models/step.interface";
 
 export const sendEmailStep: Step = {
   id: "sendEmail",

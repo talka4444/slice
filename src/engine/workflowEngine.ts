@@ -1,11 +1,11 @@
-import { Step } from "../steps/step.interface";
+import { Step } from "../models/step.interface";
 
 export enum StepStatus {
   Pending = "pending",
   Running = "running",
   Success = "success",
   Failed = "failed",
-  Blocked = "blocked",
+  Skipped = "skipped",
 }
 
 export class WorkflowEngine {
@@ -17,17 +17,20 @@ export class WorkflowEngine {
 
   async run() {
     while (this.hasPendingSteps()) {
-      const stepsReadyToRun: Step[] = this.getReadySteps();
-      const blockedSteps: Step[] = this.getBlockedSteps();
+      const stepsToRun: Step[] = this.getStepsToRun();
+      const stepsWithFailedDependencies: Step[] =
+        this.getStepsWithFailedDependencies();
 
-      this.blockSteps(blockedSteps);
+      if (stepsWithFailedDependencies) {
+        this.setStepsAsSkipped(stepsWithFailedDependencies);
+      }
 
-      if (stepsReadyToRun.length === 0) {
+      if (stepsToRun.length === 0) {
         console.log("no more steps to run, ending workflow.");
         break;
       }
 
-      await Promise.all(stepsReadyToRun.map((step) => this.runStep(step)));
+      await Promise.all(stepsToRun.map((step) => this.runStep(step)));
     }
 
     this.printResults();
@@ -47,8 +50,8 @@ export class WorkflowEngine {
     }
   }
 
-  private getReadySteps(): Step[] {
-    return [...this.steps.values()].filter(
+  private getStepsToRun(): Step[] {
+    return Array.from(this.steps.values()).filter(
       (step) =>
         step.status === StepStatus.Pending &&
         step.dependencies.every(
@@ -57,25 +60,27 @@ export class WorkflowEngine {
     );
   }
 
-  private getBlockedSteps(): Step[] {
-    return [...this.steps.values()].filter(
+  private getStepsWithFailedDependencies(): Step[] {
+    return Array.from(this.steps.values()).filter(
       (step) =>
         step.status === StepStatus.Pending &&
         step.dependencies.some(
-          (depId) => this.steps.get(depId)?.status === StepStatus.Failed
+          (depId) =>
+            this.steps.get(depId)?.status ===
+            (StepStatus.Failed || StepStatus.Skipped)
         )
     );
   }
 
-  private blockSteps(blockedSteps: Step[]) {
-    blockedSteps.forEach((step) => {
-      step.status = StepStatus.Blocked;
-      console.log(`step ${step.name} blocked due to failed dependencies`);
+  private setStepsAsSkipped(stepsToSkip: Step[]) {
+    stepsToSkip.forEach((step) => {
+      step.status = StepStatus.Skipped;
+      console.log(`step ${step.name} skipped due to failed dependencies`);
     });
   }
 
   private hasPendingSteps(): boolean {
-    return [...this.steps.values()].some(
+    return Array.from(this.steps.values()).some(
       (step) => step.status === StepStatus.Pending
     );
   }
