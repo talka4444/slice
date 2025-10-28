@@ -1,10 +1,8 @@
-import { StepStatus } from "../engine/workflowEngine";
 import { Step } from "../models/step.interface";
 
 export const failStep: Step = {
   id: "failStep",
   name: "Fail Step",
-  status: StepStatus.Pending,
   dependencies: ["sendEmail"],
   run: async () => {
     console.log("failing step...");

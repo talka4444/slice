@@ -1,6 +1,6 @@
 import { Step } from "../models/step.interface";
 
-export enum StepStatus {
+enum StepStatus {
   Pending = "pending",
   Running = "running",
   Success = "success",
@@ -8,17 +8,23 @@ export enum StepStatus {
   Skipped = "skipped",
 }
 
+interface WorkflowStep extends Step {
+  status: StepStatus;
+}
+
 export class WorkflowEngine {
-  private steps: Map<string, Step>;
+  private steps: Map<string, WorkflowStep>;
 
   constructor(steps: Step[]) {
-    this.steps = new Map(steps.map((step) => [step.id, step]));
+    this.steps = new Map(
+      steps.map((step) => [step.id, { ...step, status: StepStatus.Pending }])
+    );
   }
 
   async run() {
     while (this.hasPendingSteps()) {
-      const stepsToRun: Step[] = this.getStepsToRun();
-      const stepsWithFailedDependencies: Step[] =
+      const stepsToRun: WorkflowStep[] = this.getStepsToRun();
+      const stepsWithFailedDependencies: WorkflowStep[] =
         this.getStepsWithFailedDependencies();
 
       if (stepsWithFailedDependencies) {
@@ -36,7 +42,7 @@ export class WorkflowEngine {
     this.printResults();
   }
 
-  private async runStep(step: Step) {
+  private async runStep(step: WorkflowStep) {
     step.status = StepStatus.Running;
     console.log(`step ${step.name} is running...`);
 
@@ -50,7 +56,7 @@ export class WorkflowEngine {
     }
   }
 
-  private getStepsToRun(): Step[] {
+  private getStepsToRun(): WorkflowStep[] {
     return Array.from(this.steps.values()).filter(
       (step) =>
         step.status === StepStatus.Pending &&
@@ -60,7 +66,7 @@ export class WorkflowEngine {
     );
   }
 
-  private getStepsWithFailedDependencies(): Step[] {
+  private getStepsWithFailedDependencies(): WorkflowStep[] {
     return Array.from(this.steps.values()).filter(
       (step) =>
         step.status === StepStatus.Pending &&
@@ -72,7 +78,7 @@ export class WorkflowEngine {
     );
   }
 
-  private setStepsAsSkipped(stepsToSkip: Step[]) {
+  private setStepsAsSkipped(stepsToSkip: WorkflowStep[]) {
     stepsToSkip.forEach((step) => {
       step.status = StepStatus.Skipped;
       console.log(`step ${step.name} skipped due to failed dependencies`);
