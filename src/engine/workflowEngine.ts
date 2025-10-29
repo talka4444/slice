@@ -69,24 +69,19 @@ export class WorkflowEngine {
   }
 
   private setStepsAsSkipped(pendingSteps: WorkflowStep[]) {
-    let anyStepsSkippedThisRound = true;
+    for (const step of pendingSteps) {
+      if (step.status !== StepStatus.Pending) continue;
 
-    while (anyStepsSkippedThisRound) {
-      anyStepsSkippedThisRound = false;
+      const hasFailedDependency = step.dependencies.some((depId) => {
+        const stepStatus = this.steps.get(depId)?.status;
+        return (
+          stepStatus === StepStatus.Failed || stepStatus === StepStatus.Skipped
+        );
+      });
 
-      for (const step of pendingSteps) {
-        if (step.status !== StepStatus.Pending) continue;
-
-        const stepStatus = step.dependencies.some((depId) => {
-          const status = this.steps.get(depId)?.status;
-          return status === StepStatus.Failed || status === StepStatus.Skipped;
-        });
-
-        if (stepStatus) {
-          step.status = StepStatus.Skipped;
-          console.log(`step ${step.name} skipped due to failed dependencies`);
-          anyStepsSkippedThisRound = true;
-        }
+      if (hasFailedDependency) {
+        step.status = StepStatus.Skipped;
+        console.log(`Step "${step.name}" skipped due to failed dependencies.`);
       }
     }
   }
