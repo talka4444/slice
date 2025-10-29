@@ -25,7 +25,7 @@ export class WorkflowEngine {
     let pendingSteps: WorkflowStep[] = Array.from(this.steps.values());
 
     while (pendingSteps.length > 0) {
-      this.setStepsAsSkipped(pendingSteps);
+      this.markSkippedSteps(pendingSteps);
 
       const stepsToRun: WorkflowStep[] = this.getStepsToRun(pendingSteps);
 
@@ -41,7 +41,7 @@ export class WorkflowEngine {
       );
     }
 
-    this.printResults();
+    this.printWorkflowResults();
   }
 
   private async runStep(step: WorkflowStep) {
@@ -68,7 +68,7 @@ export class WorkflowEngine {
     );
   }
 
-  private setStepsAsSkipped(pendingSteps: WorkflowStep[]) {
+  private markSkippedSteps(pendingSteps: WorkflowStep[]) {
     for (const step of pendingSteps) {
       if (step.status !== StepStatus.Pending) continue;
 
@@ -86,10 +86,25 @@ export class WorkflowEngine {
     }
   }
 
-  private printResults() {
-    console.log("workflow results:");
+  private getWorkflowStatus(): string {
+    const stepStatuses = new Set(
+      Array.from(this.steps.values()).map((step) => step.status)
+    );
+    if (stepStatuses.has(StepStatus.Failed)) return "Failed";
+    if (
+      stepStatuses.has(StepStatus.Pending) ||
+      stepStatuses.has(StepStatus.Running)
+    )
+      return "Running";
+    return "Success";
+  }
+
+  private printWorkflowResults() {
+    console.log("Workflow steps results:");
     for (let step of this.steps.values()) {
-      console.log(`${step.name}: ${step.status}`);
+      console.log(`step ${step.name} finished with status: ${step.status}`);
     }
+
+    console.log(`Total workflow result: ${this.getWorkflowStatus()}`);
   }
 }
