@@ -25,13 +25,9 @@ export class WorkflowEngine {
     let pendingSteps: WorkflowStep[] = Array.from(this.steps.values());
 
     while (pendingSteps.length > 0) {
-      const stepsToRun: WorkflowStep[] = this.getStepsToRun(pendingSteps);
-      const stepsWithFailedDependencies: WorkflowStep[] =
-        this.getStepsWithFailedDependencies(pendingSteps);
+      this.setStepsAsSkipped(pendingSteps);
 
-      if (stepsWithFailedDependencies.length > 0) {
-        this.setStepsAsSkipped(stepsWithFailedDependencies);
-      }
+      const stepsToRun: WorkflowStep[] = this.getStepsToRun(pendingSteps);
 
       if (stepsToRun.length === 0) {
         console.log("no more steps to run, ending workflow.");
@@ -72,23 +68,27 @@ export class WorkflowEngine {
     );
   }
 
-  private getStepsWithFailedDependencies(
-    pendingSteps: WorkflowStep[]
-  ): WorkflowStep[] {
-    return pendingSteps.filter(
-      (step) =>
-        step.status === StepStatus.Pending &&
-        step.dependencies.some(
-          (depId) => this.steps.get(depId)!.status === StepStatus.Failed
-        )
-    );
-  }
+  private setStepsAsSkipped(pendingSteps: WorkflowStep[]) {
+    let anyStepsSkippedThisRound = true;
 
-  private setStepsAsSkipped(stepsToSkip: WorkflowStep[]) {
-    stepsToSkip.forEach((step) => {
-      step.status = StepStatus.Skipped;
-      console.log(`step ${step.name} skipped due to failed dependencies`);
-    });
+    while (anyStepsSkippedThisRound) {
+      anyStepsSkippedThisRound = false;
+
+      for (const step of pendingSteps) {
+        if (step.status !== StepStatus.Pending) continue;
+
+        const stepStatus = step.dependencies.some((depId) => {
+          const status = this.steps.get(depId)?.status;
+          return status === StepStatus.Failed || status === StepStatus.Skipped;
+        });
+
+        if (stepStatus) {
+          step.status = StepStatus.Skipped;
+          console.log(`step ${step.name} skipped due to failed dependencies`);
+          anyStepsSkippedThisRound = true;
+        }
+      }
+    }
   }
 
   private printResults() {
