@@ -22,12 +22,14 @@ export class WorkflowEngine {
   }
 
   async run() {
-    while (this.hasPendingSteps()) {
-      const stepsToRun: WorkflowStep[] = this.getStepsToRun();
-      const stepsWithFailedDependencies: WorkflowStep[] =
-        this.getStepsWithFailedDependencies();
+    let pendingSteps: WorkflowStep[] = Array.from(this.steps.values());
 
-      if (stepsWithFailedDependencies) {
+    while (pendingSteps.length > 0) {
+      const stepsToRun: WorkflowStep[] = this.getStepsToRun(pendingSteps);
+      const stepsWithFailedDependencies: WorkflowStep[] =
+        this.getStepsWithFailedDependencies(pendingSteps);
+
+      if (stepsWithFailedDependencies.length > 0) {
         this.setStepsAsSkipped(stepsWithFailedDependencies);
       }
 
@@ -37,6 +39,10 @@ export class WorkflowEngine {
       }
 
       await Promise.all(stepsToRun.map((step) => this.runStep(step)));
+
+      pendingSteps = pendingSteps.filter(
+        (step) => step.status === StepStatus.Pending
+      );
     }
 
     this.printResults();
@@ -56,8 +62,8 @@ export class WorkflowEngine {
     }
   }
 
-  private getStepsToRun(): WorkflowStep[] {
-    return Array.from(this.steps.values()).filter(
+  private getStepsToRun(pendingSteps: WorkflowStep[]): WorkflowStep[] {
+    return pendingSteps.filter(
       (step) =>
         step.status === StepStatus.Pending &&
         step.dependencies.every(
@@ -66,14 +72,14 @@ export class WorkflowEngine {
     );
   }
 
-  private getStepsWithFailedDependencies(): WorkflowStep[] {
-    return Array.from(this.steps.values()).filter(
+  private getStepsWithFailedDependencies(
+    pendingSteps: WorkflowStep[]
+  ): WorkflowStep[] {
+    return pendingSteps.filter(
       (step) =>
         step.status === StepStatus.Pending &&
         step.dependencies.some(
-          (depId) =>
-            this.steps.get(depId)?.status ===
-            (StepStatus.Failed || StepStatus.Skipped)
+          (depId) => this.steps.get(depId)!.status === StepStatus.Failed
         )
     );
   }
@@ -83,12 +89,6 @@ export class WorkflowEngine {
       step.status = StepStatus.Skipped;
       console.log(`step ${step.name} skipped due to failed dependencies`);
     });
-  }
-
-  private hasPendingSteps(): boolean {
-    return Array.from(this.steps.values()).some(
-      (step) => step.status === StepStatus.Pending
-    );
   }
 
   private printResults() {
