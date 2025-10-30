@@ -34,7 +34,9 @@ export class WorkflowEngine {
         break;
       }
 
-      await Promise.all(stepsToRun.map((step) => this.runStep(step)));
+      for (const step of stepsToRun) {
+        await this.runStep(step);
+      }
 
       pendingSteps = pendingSteps.filter(
         (step) => step.status === StepStatus.Pending
@@ -49,7 +51,7 @@ export class WorkflowEngine {
     console.log(`step ${step.name} is running...`);
 
     try {
-      await step.run();
+      await step.type.execute(step.params);
       step.status = StepStatus.Success;
       console.log(`step ${step.name} succeeded!`);
     } catch (e) {
