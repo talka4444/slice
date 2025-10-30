@@ -77,16 +77,22 @@ export class WorkflowEngine {
 
       if (hasFailedDependency) {
         dependentStep.status = StepStatus.Skipped;
-        console.log(`Step "${step.name}" skipped due to failed dependencies.`);
-        this.triggerDependents(dependentStep);
-      } else {
-        const allDepsSuccess = dependentStep.dependencies.every(
-          (id) => this.steps.get(id)?.status === StepStatus.Success
+        console.log(
+          `Step "${dependentStep.name}" skipped due to failed dependencies.`
         );
+        this.triggerDependents(dependentStep);
+        continue;
+      }
 
-        if (allDepsSuccess) {
-          this.runStep(dependentStep);
-        }
+      const allDepsSuccess = dependentStep.dependencies.every(
+        (id) => this.steps.get(id)?.status === StepStatus.Success
+      );
+
+      if (allDepsSuccess) {
+        console.log(
+          `All dependencies for ${dependentStep.name} succeeded! running step..`
+        );
+        this.runStep(dependentStep);
       }
     }
   }
