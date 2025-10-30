@@ -6,6 +6,6 @@ export const sendEmailStep: StepType = {
     console.log(
       `sending email to ${params?.recipient} with subject ${params?.subject}`
     );
-    await new Promise((response) => setTimeout(response, 100));
+    await new Promise((response) => setTimeout(response, 500000));
   },
 };
